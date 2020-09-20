@@ -26,6 +26,7 @@
 
 namespace ceph {
 
+// HeartbeatMap 维护一组用于内部子系统的处理器，以定期进行运行状况检查和超时检入
 /*
  * HeartbeatMap -
  *
@@ -53,6 +54,7 @@ struct heartbeat_handle_d {
   { }
 };
 
+// HeartbeatMap 维护一组用于内部子系统的处理器，以定期进行运行状况检查和超时检入
 class HeartbeatMap {
  public:
   // register/unregister

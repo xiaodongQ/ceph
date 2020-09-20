@@ -3,6 +3,7 @@
 
 #pragma once
 
+// 纯虚函数，定义interface接口
 class HBHandle {
 public:
   virtual void reset_tp_timeout() = 0;

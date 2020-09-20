@@ -107,6 +107,10 @@ public:
   seastar::future<> stop();
   template<typename Func, typename...Args>
   auto submit(Func&& func, Args&&... args) {
+    // std::move(T &&t) 用于指示对象 t 可以“被移动”，即允许从 t 到另一对象的有效率的资源传递
+    // 右值引用，forward_as_tuple用来构造元组(tuple)容器
+    // std::apply(F&& f, Tuple&& t) 以参数的元组t调用可调用 (Callable) 对象 f
+    // 此处定义一个lambda函数
     auto packaged = [func=std::move(func),
                      args=std::forward_as_tuple(args...)] {
       return std::apply(std::move(func), std::move(args));

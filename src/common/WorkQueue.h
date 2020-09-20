@@ -44,17 +44,25 @@ struct ThreadPool {
 class ThreadPool : public md_config_obs_t {
 protected:
   CephContext *cct;
+  // 线程池名字
   std::string name;
+  // 也是线程池名字？
   std::string thread_name;
+  // 锁的名字
   std::string lockname;
+  // 工作队列的互斥锁
   ceph::mutex _lock;
+  // 锁对应的条件变量，实际是std::condition_variable，ceph做了一层包装
   ceph::condition_variable _cond;
+  // 线程池是否停止
   bool _stop;
+  // 暂时中止标志
   int _pause;
   int _draining;
   ceph::condition_variable _wait_cond;
 
 public:
+  // 定义一个内部类(public)
   class TPHandle : public HBHandle {
     friend class ThreadPool;
     CephContext *cct;
@@ -73,24 +81,30 @@ public:
   };
 protected:
 
+  // 内部类(protected)，工作队列的基本接口(包含纯虚函数，抽象类)
   /// Basic interface to a work queue used by the worker threads.
   struct WorkQueue_ {
     std::string name;
     ceph::timespan timeout_interval;
     ceph::timespan suicide_interval;
+    // 用初始化列表来在构造函数本体之前初始化参数(而不是赋值，初始化效率更高)(Effective C++ 条款04：确定对象被使用前已先被初始化)
     WorkQueue_(std::string n, ceph::timespan ti, ceph::timespan sti)
       : name(std::move(n)), timeout_interval(ti), suicide_interval(sti)
     { }
     virtual ~WorkQueue_() {}
+    // 纯虚类，子类进行实现
+    // 移除工作队列中的所有元素
     /// Remove all work items from the queue.
     virtual void _clear() = 0;
     /// Check whether there is anything to do.
     virtual bool _empty() = 0;
     /// Get the next work item to process.
+    // 获取下一个待处理的工作
     virtual void *_void_dequeue() = 0;
     /** @brief Process the work item.
      * This function will be called several times in parallel
      * and must therefore be thread-safe. */
+    // 处理工作
     virtual void _void_process(void *item, TPHandle &handle) = 0;
     /** @brief Synchronously finish processing a work item.
      * This function is called after _void_process with the global thread pool lock held,
@@ -116,18 +130,20 @@ public:
    * This is useful if the items are single primitive values or very small objects
    * (a few bytes). The queue will automatically add itself to the thread pool on
    * construction and remove itself on destruction. */
+  // 任务队列，定义模板类，按值提交，继承上面的内部接口WorkQueue_(抽象类)，实现其中的接口方法
   template<typename T, typename U = T>
   class WorkQueueVal : public WorkQueue_ {
     ceph::mutex _lock = ceph::make_mutex("WorkQueueVal::_lock");
-    ThreadPool *pool;
-    std::list<U> to_process;
-    std::list<U> to_finish;
-    virtual void _enqueue(T) = 0;
+    ThreadPool *pool; // 线程池
+    std::list<U> to_process; // 要处理的任务队列(用list来模拟deque)
+    std::list<U> to_finish;  // 已处理完的任务
+    virtual void _enqueue(T) = 0; // 用来向线程池pool添加任务，下面的queue会调用该接口
     virtual void _enqueue_front(T) = 0;
     bool _empty() override = 0;
     virtual U _dequeue() = 0;
     virtual void _process_finish(U) {}
 
+    // 获取下一个待处理的工作，放到处理列表中(原队列同时删除该工作)
     void *_void_dequeue() override {
       {
 	std::lock_guard l(_lock);
@@ -138,20 +154,25 @@ public:
       }
       return ((void*)1); // Not used
     }
+    // 处理任务，并放入to_finish队列
     void _void_process(void *, TPHandle &handle) override {
       _lock.lock();
       ceph_assert(!to_process.empty());
+      // 拿to_process队列头中的任务
       U u = to_process.front();
       to_process.pop_front();
       _lock.unlock();
 
+      // 根据传入的句并来进行处理，_process 是本类中定义的纯虚函数(即本类也是一个抽象类)
       _process(u, handle);
 
       _lock.lock();
+      // 处理完之后放入 to_finish 队列(list来模拟deque)
       to_finish.push_back(u);
       _lock.unlock();
     }
 
+    // 结束任务前的处理，to_finish队列头出队，并执行该任务结束前的处理
     void _void_process_finish(void *) override {
       _lock.lock();
       ceph_assert(!to_finish.empty());
@@ -159,12 +180,14 @@ public:
       to_finish.pop_front();
       _lock.unlock();
 
+      // 具体结束前要执行什么操作，由子类实现虚函数_process_finish
       _process_finish(u);
     }
 
     void _clear() override {}
 
   public:
+    // 构造的时侯纠添加到线程池的工作队列了
     WorkQueueVal(std::string n,
 		 ceph::timespan ti,
 		 ceph::timespan sti,
@@ -175,6 +198,7 @@ public:
     ~WorkQueueVal() override {
       pool->remove_work_queue(this);
     }
+    // 向线程池pool的任务队列中添加一个任务，并通过(线程池中的)条件变量进行通知
     void queue(T item) {
       std::lock_guard l(pool->_lock);
       _enqueue(item);
@@ -182,6 +206,7 @@ public:
     }
     void queue_front(T item) {
       std::lock_guard l(pool->_lock);
+      // 添加到队列头
       _enqueue_front(item);
       pool->_cond.notify_one();
     }
@@ -203,18 +228,24 @@ public:
    * This is useful when the work item are large or include dynamically allocated memory. The queue
    * will automatically add itself to the thread pool on construction and remove itself on
    * destruction. */
+  // 任务队列，按指针提交的任务(上面的WorkQueueVal中任务是按值提交)，也实现WorkQueue_接口
   template<class T>
   class WorkQueue : public WorkQueue_ {
     ThreadPool *pool;
     
+    // 入队一个任务，添加到队列
     /// Add a work item to the queue.
     virtual bool _enqueue(T *) = 0;
+    // 出队一个已提交的任务，任务信息放到传入的指针中
     /// Dequeue a previously submitted work item.
     virtual void _dequeue(T *) = 0;
+    // 出队一个已提交的任务，任务信息通过返回值返回
     /// Dequeue a work item and return the original submitted pointer.
     virtual T *_dequeue() = 0;
+    // 结束前的处理
     virtual void _process_finish(T *) {}
 
+    // 实现继承的抽象类方法
     // implementation of virtual methods from WorkQueue_
     void *_void_dequeue() override {
       return (void *)_dequeue();
@@ -447,10 +478,12 @@ public:
     c.wait(l);
   }
 
+  // 外部已经加锁情况下通知(即调用该接口前外面已经加锁了)
   /// wake up a waiter (with lock already held)
   void _wake() {
     _cond.notify_all();
   }
+  // 没有加锁情况下进行通知(函数里面进行一次手动加锁)
   /// wake up a waiter (without lock held)
   void wake() {
     std::lock_guard l(_lock);

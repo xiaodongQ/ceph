@@ -122,6 +122,7 @@ namespace ceph {
 
   typedef std::mutex mutex;
   typedef std::recursive_mutex recursive_mutex;
+  // 包装一层std的条件变量
   typedef std::condition_variable condition_variable;
   typedef std::shared_mutex shared_mutex;
 
