@@ -62,12 +62,15 @@ protected:
   ceph::condition_variable _wait_cond;
 
 public:
-  // 定义一个内部类(public)
+  // 定义一个内部类(public)，用做超时检查
   class TPHandle : public HBHandle {
     friend class ThreadPool;
     CephContext *cct;
+    // 心跳，记录了相关信息，并把该结构添加到HeartbeatMap的系统链表中保存。OSD会有一个定时器，定时检查是否超时
     ceph::heartbeat_handle_d *hb;
+    // 超时，每次线程函数执行时，都会设置一个grace超时时间，当线程执行超过该时间，就认为是unhealthy的状态
     ceph::timespan grace;
+    // 自杀的超时时间，当执行时间超过suicide_grace时，OSD就会产生断言而导致自杀
     ceph::timespan suicide_grace;
   public:
     TPHandle(
@@ -433,7 +436,9 @@ protected:
   int processing;
 
   void start_threads();
+  // 把旧的工作线程释放掉
   void join_old_threads();
+  // 线程池的执行函数
   virtual void worker(WorkThread *wt);
 
 public:
@@ -494,6 +499,7 @@ public:
     _cond.wait(l);
   }
 
+  // 启动线程池，其在加锁的情况下，调用函数start_threads
   /// start thread pool thread
   void start();
   /// stop thread pool thread
@@ -593,6 +599,9 @@ private:
   ceph::unordered_map<Context*, int> m_context_results;
 };
 
+// 如果任务之间有互斥性，那么正在处理该任务的两个线程有一个必须等待另一个处理完成后才能处理，从而导致线程的阻塞，性能下降
+// ShardedThreadPool对上述的任务调度方式做了改进，其在线程的执行函数里，添加了表示线程的thread_index
+// 其基本的思想就是：每个线程对应一个任务队列，所有需要顺序执行的任务都放在同一个线程的任务队列里，全部由该线程执行
 class ShardedThreadPool {
 
   CephContext *cct;
@@ -604,6 +613,9 @@ class ShardedThreadPool {
   ceph::condition_variable wait_cond;
   uint32_t num_threads;
 
+  // 从C++11开始，对列表初始化（List Initialization）的功能进行了扩充
+  // C++11列表初始化还可以应用于容器，终于可以摆脱 push_back() 调用了，C++11中可以直观地初始化容器
+  // 如：vector<string> vs={"first", "second", "third"};
   std::atomic<bool> stop_threads = { false };
   std::atomic<bool> pause_threads = { false };
   std::atomic<bool> drain_threads = { false };
@@ -674,6 +686,7 @@ private:
 
   std::vector<WorkThreadSharded*> threads_shardedpool;
   void start_threads();
+  // 在线程执行函数里，加了表示线程的 thread_index
   void shardedthreadpool_worker(uint32_t thread_index);
   void set_wq(BaseShardedWQ* swq) {
     wq = swq;

@@ -34,6 +34,7 @@ namespace ceph {
 #define INT64_MIN ((int64_t)0x8000000000000000ll)
 #endif
 
+// `hobject_t`是hash object的缩写，其在`sobject_t`基础上增加了一些字段
 struct hobject_t {
 public:
   static const int64_t POOL_META = -1;
@@ -53,15 +54,19 @@ public:
   object_t oid;
   snapid_t snap;
 private:
+  // hash和key不能同时设置，hash值一般设置为就是pg的id值
   uint32_t hash;
   bool max;
   uint32_t nibblewise_key_cache;
   uint32_t hash_reverse_bits;
 public:
+  // 所在的pool的id
   int64_t pool;
+  // nspace一般为空，它用于标识特殊的对象
   std::string nspace;
 
 private:
+  // 对象的key
   std::string key;
 
   class hobject_t_max {};
@@ -371,9 +376,12 @@ static inline int cmp(const T&, const hobject_t&r) {
 
 typedef version_t gen_t;
 
+// ghobject_t在对象hobject_t的基础上，添加了generation字段和shard_id字段，这个用于ErasureCode模式下的PG
 struct ghobject_t {
   hobject_t hobj;
+  // generation用于记录对象的版本号
   gen_t generation;
+  // shard_id用于标识对象所在的osd在EC类型的PG中的序号
   shard_id_t shard_id;
   bool max;
 

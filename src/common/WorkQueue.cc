@@ -274,12 +274,14 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
     if (pause_threads) {
       std::unique_lock ul(shardedpool_lock);
       ++num_paused;
+      // 通知
       wait_cond.notify_all();
       while (pause_threads) {
        cct->get_heartbeat_map()->reset_timeout(
 	        hb,
 	        wq->timeout_interval,
 		wq->suicide_interval);
+      // 等待shardedpool_cond条件变量，直到其被唤醒，或者到达超时
        shardedpool_cond.wait_for(
 	 ul,
 	 std::chrono::seconds(cct->_conf->threadpool_empty_queue_max_wait));
@@ -288,8 +290,10 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
     }
     if (drain_threads) {
       std::unique_lock ul(shardedpool_lock);
+      // thread_index表示的该线程 对应的分片是否为空
       if (wq->is_shard_empty(thread_index)) {
         ++num_drained;
+        // 通知该条件变量，说明有等待的线程了
         wait_cond.notify_all();
         while (drain_threads) {
 	  cct->get_heartbeat_map()->reset_timeout(
@@ -308,6 +312,7 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
       hb,
       wq->timeout_interval,
       wq->suicide_interval);
+    // 处理
     wq->_process(thread_index, hb);
 
   }

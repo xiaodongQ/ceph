@@ -45,6 +45,7 @@ class Thread {
   virtual ~Thread();
 
  protected:
+  // 子类需要实现该抽象类的entry方法
   virtual void *entry() = 0;
 
  private:

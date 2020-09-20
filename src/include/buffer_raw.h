@@ -23,9 +23,12 @@
 #include "include/mempool.h"
 #include "include/spinlock.h"
 
+// Buffer就是一个命名空间，在这个命名空间下定义了Buffer相关的数据结构，这些数据结构在Ceph的源代码中广泛使用
 namespace ceph::buffer {
 inline namespace v15_2_0 {
 
+  // buffer::raw类是基础类，其子类完成了Buffer数据空间的分配
+  // 类buffer::raw是一个原始的数据Buffer，在其基础之上添加了长度、引用计数和额外的crc校验信息
   class raw {
   public:
     // In the future we might want to have a slab allocator here with few
@@ -33,15 +36,25 @@ inline namespace v15_2_0 {
     std::aligned_storage<sizeof(ptr_node),
 			 alignof(ptr_node)>::type bptr_storage;
   protected:
+    // 数据指针
     char *data;
+    // 数据长度
     unsigned len;
   public:
+    // 引用计数(无锁，CAS)
     ceph::atomic<unsigned> nref { 0 };
     int mempool;
 
+    // 下面两个pair是crc32校验信息
+    // 数据段的起始和结束
     std::pair<size_t, size_t> last_crc_offset {std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::max()};
+    // pair<base crc32校验码, 加上数据段后计算出的crc32校验码>
     std::pair<uint32_t, uint32_t> last_crc_val;
 
+    // 自旋锁，ceph自己实现的，基于std::atomic_flag来进行循环地test_and_set
+    // 相较与互斥锁(mutex)将等待锁的线程置于等待队列中，自旋锁会忙等待并不停的进行锁请求(busy-waiting类型)，直到得到这个锁为止。所以，自旋锁一般用于多核的服务器。
+    // 自旋锁适用于锁使用者保持锁时间比较短的情况下
+    // 看《Ceph源码分析》中，用的是读写锁
     mutable ceph::spinlock crc_spinlock;
 
     explicit raw(unsigned l, int mempool=mempool::mempool_buffer_anon)

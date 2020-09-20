@@ -128,6 +128,7 @@ static ceph::spinlock debug_lock;
     }
   };
 
+  // 继承raw，实现了用malloc函数分配内存空间的功能
   class buffer::raw_malloc : public buffer::raw {
   public:
     MEMPOOL_CLASS_HELPERS();
@@ -155,6 +156,7 @@ static ceph::spinlock debug_lock;
   };
 
 #ifndef __CYGWIN__
+  // 调用了函数 posix_memalign 来申请内存地址对齐的内存空间
   class buffer::raw_posix_aligned : public buffer::raw {
     unsigned align;
   public:
@@ -186,6 +188,7 @@ static ceph::spinlock debug_lock;
 #endif
 
 #ifdef __CYGWIN__
+  // 在系统不支持内存对齐申请的情况下自己实现了内存地址的对齐
   class buffer::raw_hack_aligned : public buffer::raw {
     unsigned align;
     char *realdata;
@@ -215,6 +218,7 @@ static ceph::spinlock debug_lock;
   /*
    * primitive buffer types
    */
+  // raw_char使用了C++的new操作符来申请内存空间
   class buffer::raw_char : public buffer::raw {
   public:
     MEMPOOL_CLASS_HELPERS();
@@ -1162,6 +1166,9 @@ static ceph::spinlock debug_lock;
     return total - length();
   }
 
+  // 内存对齐：有些情况下，需要内存地址对齐，
+  // 例如当以directIO方式写入数据至磁盘时，需要内存地址按内存页面大小（page）对齐，也即buffer::list的内存地址都需按page对齐
+  // 函数rebuild用来完成对齐的功能
   void buffer::list::rebuild()
   {
     if (_len == 0) {

@@ -33,7 +33,10 @@
 
 using namespace std;
 
+// 对象Object是默认为4MB大小的数据块。一个对象就对应本地文件系统中的一个文件
+// 结构object_t对应本地文件系统的一个文件
 struct object_t {
+  // 对象名
   std::string name;
 
   object_t() {}
@@ -41,6 +44,7 @@ struct object_t {
   object_t(const char *s) : name(s) {}
   // cppcheck-suppress noExplicitConstructor
   object_t(const std::string& s) : name(s) {}
+  // 右值
   object_t(std::string&& s) : name(std::move(s)) {}
   object_t(std::string_view s) : name(s) {}
 
@@ -163,8 +167,10 @@ inline std::ostream& operator<<(std::ostream& out, const snapid_t& s) {
 }
 
 
+// sobject_t在object_t之上增加了snapshot信息，用于标识是否是快照对象
 struct sobject_t {
   object_t oid;
+  // 快照对象的对应的快照序号，如果一个对象不是快照对象（也就是head对象），那么snap字段就被设置为CEPH_NOSNAP值
   snapid_t snap;
 
   sobject_t() : snap(0) {}

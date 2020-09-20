@@ -31,6 +31,7 @@ enum {
   l_finisher_last
 };
 
+// 类Finisher用来完成回调函数Context的执行，其内部有一个FinisherThread线程来用于执行Context回调函数
 /** @brief Asynchronous cleanup class.
  * Finisher asynchronously completes Contexts, which are simple classes
  * representing callbacks, in a dedicated worker thread. Enqueuing
@@ -46,6 +47,7 @@ class Finisher {
   bool	       finisher_empty_wait; ///< True mean someone wait finisher empty.
 
   /// Queue for contexts for which complete(0) will be called.
+  // 需要执行的Context(vector方式保存)，成员类型为pair形式，其中int为返回值
   std::vector<std::pair<Context*,int>> finisher_queue;
   std::vector<std::pair<Context*,int>> in_progress_queue;
 
@@ -58,10 +60,11 @@ class Finisher {
   void *finisher_thread_entry();
 
   struct FinisherThread : public Thread {
+    // 组合的方式，装饰器模式
     Finisher *fin;
     explicit FinisherThread(Finisher *f) : fin(f) {}
     void* entry() override { return fin->finisher_thread_entry(); }
-  } finisher_thread;
+  } finisher_thread; // 同时定义了一个类成员变量
 
  public:
   /// Add a context to complete, optionally specifying a parameter for the complete function.
@@ -76,6 +79,7 @@ class Finisher {
       logger->inc(l_finisher_queue_len);
   }
 
+  // 重载，通过list向队列中添加多个Context
   void queue(std::list<Context*>& ls) {
     {
       std::unique_lock ul(finisher_lock);
@@ -90,6 +94,7 @@ class Finisher {
     }
     ls.clear();
   }
+  // 重载，通过deque向队列中添加多个Context
   void queue(std::deque<Context*>& ls) {
     {
       std::unique_lock ul(finisher_lock);
@@ -104,6 +109,7 @@ class Finisher {
     }
     ls.clear();
   }
+  // 重载，通过vector向队列中添加多个Context
   void queue(std::vector<Context*>& ls) {
     {
       std::unique_lock ul(finisher_lock);
@@ -135,6 +141,7 @@ class Finisher {
    * finishes, but this class should never be used in this way. */
   void wait_for_empty();
 
+  // 单参构造，加explicit防止隐式转换
   /// Construct an anonymous Finisher.
   /// Anonymous finishers do not log their queue length.
   explicit Finisher(CephContext *cct_) :

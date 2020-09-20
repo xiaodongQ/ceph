@@ -25,12 +25,16 @@
  * excessive requests for more of them are delayed, until some slots are put
  * back, so @p get_current() drops below the limit after fulfills the requests.
  */
+// 类Throttle用来限制消费的资源数量（也常称为槽位“slot”），当请求的slot数量达到max值时，请求就会被阻塞，直到有新的槽位释放出来
 class Throttle final : public ThrottleInterface {
   CephContext *cct;
   const std::string name;
   PerfCountersRef logger;
+  // count: 当前占用的slot数量
+  // max: slot数量的最大值
   std::atomic<int64_t> count = { 0 }, max = { 0 };
   std::mutex lock;
+  // 等待的条件变量(多个)
   std::list<std::condition_variable> conds;
   const bool use_perf;
 
@@ -97,6 +101,7 @@ public:
    * @returns true if this request is blocked due to the throttling, false 
    * otherwise
    */
+  // 用于获取数量为c个slot，参数c默认为1，参数m默认为0，如果m不为默认的0值，就用m值重新设置slot的max值
   bool get(int64_t c = 1, int64_t m = 0);
 
   /**

@@ -163,10 +163,14 @@ struct error_code;
   /*
    * a buffer pointer.  references (a subsequence of) a raw buffer.
    */
+  // 类buffer::ptr就是对于buffer::raw的一个部分数据段
   class CEPH_BUFFER_API ptr {
     friend class list;
   protected:
+    // 原始的数据Buffer
     raw *_raw;
+    // _off是在_raw里的偏移量
+    // _len是ptr的长度
     unsigned _off, _len;
   private:
 
@@ -409,14 +413,17 @@ struct error_code;
    * list - the useful bit!
    */
 
+  // 类buffer::list是一个使用广泛的类，它是多个buffer::ptr的列表，也就是多个内存数据段的列表
   class CEPH_BUFFER_API list {
   public:
+    // 基于单链表
     // this the very low-level implementation of singly linked list
     // ceph::buffer::list is built on. We don't use intrusive slist
     // of Boost (or any other 3rd party) to save extra dependencies
     // in our public headers.
     class buffers_t {
       // _root.next can be thought as _head
+      // 组成单链表结构
       ptr_hook _root;
       ptr_hook* _tail;
 
@@ -513,6 +520,7 @@ struct error_code;
 	_tail = &item;
       }
 
+      // 添加一个ptr到list的头部，单链表操作
       void push_front(reference item) {
 	item.next = _root.next;
 	_root.next = &item;
@@ -627,6 +635,7 @@ struct error_code;
 
   private:
     // my private bits
+    // 内部包含所有ptr，组成单链表结构
     buffers_t _buffers;
 
     // track bufferptr we can modify (especially ::append() to). Not all bptrs
@@ -1108,7 +1117,7 @@ struct error_code;
     const_iterator end() const {
       return const_iterator(this, _len, _buffers.end(), 0);
     }
-
+    // 各个重载版本的append，添加一个字符到list中
     void append(char c);
     void append(const char *data, unsigned len);
     void append(std::string s) {
