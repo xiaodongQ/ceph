@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
     { "auth_client_required", "cephx" }
   };
 
+  // 入参转换为vector
   auto args = argv_to_vec(argc, argv);
   if (args.empty()) {
     cerr << argv[0] << ": -h or --help for usage" << std::endl;

@@ -3175,6 +3175,7 @@ rgw_global_init(const std::map<std::string,std::string> *defaults,
 		    int flags)
 {
   // Load the config from the files, but not the mon
+  // 预处理，其中会分配ceph上下文类，并做部分初始化
   global_pre_init(defaults, args, module_type, code_env, flags);
 
   // Get the store backend
