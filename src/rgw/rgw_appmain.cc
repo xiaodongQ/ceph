@@ -95,6 +95,7 @@ rgw::AppMain::~AppMain() = default;
 
 void rgw::AppMain::init_frontends1(bool nfs) 
 {
+  // 前端是否是 nfs
   this->nfs = nfs;
   std::string fe_key = (nfs) ? "rgw_nfs_frontends" : "rgw_frontends";
   std::vector<std::string> frontends;

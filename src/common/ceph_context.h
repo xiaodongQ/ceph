@@ -72,8 +72,8 @@ class CephContext {
 public:
   CephContext();
   CephContext(uint32_t,
-	      code_environment_t=CODE_ENVIRONMENT_UTILITY,
-	      int = 0)
+              code_environment_t=CODE_ENVIRONMENT_UTILITY,
+              int = 0)
     : CephContext{}
   {}
   CephContext(CephContext&&) = default;
@@ -121,7 +121,7 @@ public:
     std::function<ceph::logging::Log* (const ceph::logging::SubsystemMap *)> create_log;
   };
   CephContext(uint32_t module_type_,
-	      const create_options& options);
+              const create_options& options);
   CephContext(const CephContext&) = delete;
   CephContext& operator =(const CephContext&) = delete;
   CephContext(CephContext&&) = delete;
@@ -187,36 +187,36 @@ public:
    * process an admin socket command
    */
   int do_command(std::string_view command, const cmdmap_t& cmdmap,
-		 Formatter *f,
-		 std::ostream& errss,
-		 ceph::bufferlist *out);
+                 Formatter *f,
+                 std::ostream& errss,
+                 ceph::bufferlist *out);
   int _do_command(std::string_view command, const cmdmap_t& cmdmap,
-		  Formatter *f,
-		  std::ostream& errss,
-		  ceph::bufferlist *out);
+                  Formatter *f,
+                  std::ostream& errss,
+                  ceph::bufferlist *out);
 
   static constexpr std::size_t largest_singleton = 8 * 72;
 
   template<typename T, typename... Args>
   T& lookup_or_create_singleton_object(std::string_view name,
-				       bool drop_on_fork,
-				       Args&&... args) {
+                                       bool drop_on_fork,
+                                       Args&&... args) {
     static_assert(sizeof(T) <= largest_singleton,
-		  "Please increase largest singleton.");
+                  "Please increase largest singleton.");
     std::lock_guard lg(associated_objs_lock);
     std::type_index type = typeid(T);
 
     auto i = associated_objs.find(std::make_pair(name, type));
     if (i == associated_objs.cend()) {
       if (drop_on_fork) {
-	associated_objs_drop_on_fork.insert(std::string(name));
+        associated_objs_drop_on_fork.insert(std::string(name));
       }
       i = associated_objs.emplace_hint(
-	i,
-	std::piecewise_construct,
-	std::forward_as_tuple(name, type),
-	std::forward_as_tuple(std::in_place_type<T>,
-			      std::forward<Args>(args)...));
+        i,
+        std::piecewise_construct,
+        std::forward_as_tuple(name, type),
+        std::forward_as_tuple(std::in_place_type<T>,
+                              std::forward<Args>(args)...));
     }
     return ceph::any_cast<T&>(i->second);
   }
@@ -231,7 +231,7 @@ public:
   /// check if experimental feature is enable, and emit appropriate warnings
   bool check_experimental_feature_enabled(const std::string& feature);
   bool check_experimental_feature_enabled(const std::string& feature,
-					  std::ostream *message);
+                                          std::ostream *message);
 
   ceph::PluginRegistry *get_plugin_registry() {
     return _plugin_registry;
@@ -338,15 +338,15 @@ private:
     using is_transparent = std::true_type;
     template<typename T, typename U>
     bool operator ()(const std::pair<T, std::type_index>& l,
-		     const std::pair<U, std::type_index>& r) const noexcept {
+                     const std::pair<U, std::type_index>& r) const noexcept {
       return ((l.first < r.first)  ||
-	      (l.first == r.first && l.second < r.second));
+              (l.first == r.first && l.second < r.second));
     }
   };
 
   std::map<std::pair<std::string, std::type_index>,
-	   ceph::immobile_any<largest_singleton>,
-	   associated_objs_cmp> associated_objs;
+           ceph::immobile_any<largest_singleton>,
+           associated_objs_cmp> associated_objs;
   std::set<std::string> associated_objs_drop_on_fork;
 
   ceph::spinlock _fork_watchers_lock;

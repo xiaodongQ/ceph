@@ -28,15 +28,17 @@
 
 #ifndef WITH_SEASTAR
 CephContext *common_preinit(const CephInitParameters &iparams,
-			    enum code_environment_t code_env, int flags)
+                            enum code_environment_t code_env, int flags)
 {
   // set code environment
   ANNOTATE_BENIGN_RACE_SIZED(&g_code_env, sizeof(g_code_env), "g_code_env");
   g_code_env = code_env;
 
   // Create a configuration object
+  // 创建CephContext对象实例
   CephContext *cct = new CephContext(iparams.module_type, code_env, flags);
 
+  // 下面更新配置中的部分内容
   auto& conf = cct->_conf;
   // add config observers here
 
@@ -55,7 +57,7 @@ CephContext *common_preinit(const CephInitParameters &iparams,
   if ((flags & CINIT_FLAG_UNPRIVILEGED_DAEMON_DEFAULTS)) {
     // make this unique despite multiple instances by the same name.
     conf.set_val_default("admin_socket",
-			  "$run_dir/$cluster-$name.$pid.$cctid.asok");
+                          "$run_dir/$cluster-$name.$pid.$cctid.asok");
   }
 
   if (code_env == CODE_ENVIRONMENT_LIBRARY ||
@@ -75,7 +77,7 @@ CephContext *common_preinit(const CephInitParameters &iparams,
 #endif	// #ifndef WITH_SEASTAR
 
 void complain_about_parse_error(CephContext *cct,
-				const std::string& parse_error)
+                                const std::string& parse_error)
 {
   if (parse_error.empty())
     return;

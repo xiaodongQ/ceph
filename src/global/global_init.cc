@@ -52,6 +52,7 @@ using std::string;
 
 static void global_init_set_globals(CephContext *cct)
 {
+  // 设置到全局变量中
   g_ceph_context = cct;
   get_process_name(g_process_name, sizeof(g_process_name));
 }
@@ -60,8 +61,8 @@ static void output_ceph_version()
 {
   char buf[1024];
   snprintf(buf, sizeof(buf), "%s, process %s, pid %d",
-	   pretty_version_to_str().c_str(),
-	   get_process_name_cpp().c_str(), getpid());
+           pretty_version_to_str().c_str(),
+           get_process_name_cpp().c_str(), getpid());
   generic_dout(0) << buf << dendl;
 }
 
@@ -73,7 +74,7 @@ static const char* c_str_or_null(const std::string &str)
 }
 
 static int chown_path(const std::string &pathname, const uid_t owner, const gid_t group,
-		      const std::string &uid_str, const std::string &gid_str)
+                      const std::string &uid_str, const std::string &gid_str)
 {
   #ifdef _WIN32
   return 0;
@@ -90,7 +91,7 @@ static int chown_path(const std::string &pathname, const uid_t owner, const gid_
   if (r < 0) {
     r = -errno;
     cerr << "warning: unable to chown() " << pathname << " as "
-	 << uid_str << ":" << gid_str << ": " << cpp_strerror(r) << std::endl;
+         << uid_str << ":" << gid_str << ": " << cpp_strerror(r) << std::endl;
   }
 
   return r;
@@ -107,19 +108,22 @@ void global_pre_init(
   std::string cluster = "";
 
   // ensure environment arguments are included in early processing
+  // getenv获取的环境变量也添加到vector里面
   env_to_vec(args);
 
   CephInitParameters iparams = ceph_argparse_early_args(
     args, module_type,
     &cluster, &conf_file_list);
 
+  // 返回创建好并部分初始化的上下文类，下面继续初始化
   CephContext *cct = common_preinit(iparams, code_env, flags);
   cct->_conf->cluster = cluster;
+  // CephContext类实例指针设置到 g_ceph_context 全局变量里
   global_init_set_globals(cct);
   auto& conf = cct->_conf;
 
   if (flags & (CINIT_FLAG_NO_DEFAULT_CONFIG_FILE|
-	       CINIT_FLAG_NO_MON_CONFIG)) {
+               CINIT_FLAG_NO_MON_CONFIG)) {
     conf->no_mon_config = true;
   }
 
@@ -135,7 +139,7 @@ void global_pre_init(
   }
 
   int ret = conf.parse_config_files(c_str_or_null(conf_file_list),
-				    &cerr, flags);
+                                    &cerr, flags);
   if (ret == -EDOM) {
     cct->_log->flush();
     cerr << "global_init: error parsing config file." << std::endl;
@@ -144,13 +148,13 @@ void global_pre_init(
   else if (ret == -ENOENT) {
     if (!(flags & CINIT_FLAG_NO_DEFAULT_CONFIG_FILE)) {
       if (conf_file_list.length()) {
-	cct->_log->flush();
-	cerr << "global_init: unable to open config file from search list "
-	     << conf_file_list << std::endl;
+        cct->_log->flush();
+        cerr << "global_init: unable to open config file from search list "
+             << conf_file_list << std::endl;
         _exit(1);
       } else {
-	cerr << "did not load config file, using default settings."
-	     << std::endl;
+        cerr << "did not load config file, using default settings."
+             << std::endl;
       }
     }
   }
@@ -180,9 +184,9 @@ void global_pre_init(
 
 boost::intrusive_ptr<CephContext>
 global_init(const std::map<std::string,std::string> *defaults,
-	    std::vector < const char* >& args,
-	    uint32_t module_type, code_environment_t code_env,
-	    int flags, bool run_pre_init)
+            std::vector < const char* >& args,
+            uint32_t module_type, code_environment_t code_env,
+            int flags, bool run_pre_init)
 {
   // Ensure we're not calling the global init functions multiple times.
   static bool first_run = true;
@@ -201,7 +205,7 @@ global_init(const std::map<std::string,std::string> *defaults,
   if (g_ceph_context->get_init_flags() != flags) {
     g_ceph_context->set_init_flags(flags);
     if (flags & (CINIT_FLAG_NO_DEFAULT_CONFIG_FILE|
-		 CINIT_FLAG_NO_MON_CONFIG)) {
+                 CINIT_FLAG_NO_MON_CONFIG)) {
       g_conf()->no_mon_config = true;
     }
   }
@@ -228,11 +232,11 @@ global_init(const std::map<std::string,std::string> *defaults,
   if (getuid() != 0) {
     if (g_conf()->setuser.length()) {
       cerr << "ignoring --setuser " << g_conf()->setuser << " since I am not root"
-	   << std::endl;
+           << std::endl;
     }
     if (g_conf()->setgroup.length()) {
       cerr << "ignoring --setgroup " << g_conf()->setgroup
-	   << " since I am not root" << std::endl;
+           << " since I am not root" << std::endl;
     }
   } else if (g_conf()->setgroup.length() ||
              g_conf()->setuser.length()) {
@@ -250,11 +254,11 @@ global_init(const std::map<std::string,std::string> *defaults,
       if (uid) {
         getpwuid_r(uid, &pa, buf, sizeof(buf), &p);
       } else {
-	getpwnam_r(g_conf()->setuser.c_str(), &pa, buf, sizeof(buf), &p);
+        getpwnam_r(g_conf()->setuser.c_str(), &pa, buf, sizeof(buf), &p);
         if (!p) {
-	  cerr << "unable to look up user '" << g_conf()->setuser << "'"
-	       << std::endl;
-	  exit(1);
+          cerr << "unable to look up user '" << g_conf()->setuser << "'"
+               << std::endl;
+          exit(1);
         }
 
         uid = p->pw_uid;
@@ -269,74 +273,74 @@ global_init(const std::map<std::string,std::string> *defaults,
     if (g_conf()->setgroup.length() > 0) {
       gid = atoi(g_conf()->setgroup.c_str());
       if (!gid) {
-	// There's no actual well-defined max that I could find in
-	// library documentation. If we're allocating on the heap,
-	// 64KiB seems at least reasonable.
-	static constexpr std::size_t size = 64 * 1024;
-	auto buf = std::make_unique_for_overwrite<char[]>(size);
-	struct group gr;
-	struct group *g = 0;
-	getgrnam_r(g_conf()->setgroup.c_str(), &gr, buf.get(), size, &g);
-	if (!g) {
-	  cerr << "unable to look up group '" << g_conf()->setgroup << "'"
-	       << ": " << cpp_strerror(errno) << std::endl;
-	  exit(1);
-	}
-	gid = g->gr_gid;
-	gid_string = g_conf()->setgroup;
+        // There's no actual well-defined max that I could find in
+        // library documentation. If we're allocating on the heap,
+        // 64KiB seems at least reasonable.
+        static constexpr std::size_t size = 64 * 1024;
+        auto buf = std::make_unique_for_overwrite<char[]>(size);
+        struct group gr;
+        struct group *g = 0;
+        getgrnam_r(g_conf()->setgroup.c_str(), &gr, buf.get(), size, &g);
+        if (!g) {
+          cerr << "unable to look up group '" << g_conf()->setgroup << "'"
+               << ": " << cpp_strerror(errno) << std::endl;
+          exit(1);
+        }
+        gid = g->gr_gid;
+        gid_string = g_conf()->setgroup;
       }
     }
     if ((uid || gid) &&
-	g_conf()->setuser_match_path.length()) {
+        g_conf()->setuser_match_path.length()) {
       // induce early expansion of setuser_match_path config option
       string match_path = g_conf()->setuser_match_path;
       g_conf().early_expand_meta(match_path, &cerr);
       struct stat st;
       int r = ::stat(match_path.c_str(), &st);
       if (r < 0) {
-	cerr << "unable to stat setuser_match_path "
-	     << g_conf()->setuser_match_path
-	     << ": " << cpp_strerror(errno) << std::endl;
-	exit(1);
+        cerr << "unable to stat setuser_match_path "
+             << g_conf()->setuser_match_path
+             << ": " << cpp_strerror(errno) << std::endl;
+        exit(1);
       }
       if ((uid && uid != st.st_uid) ||
-	  (gid && gid != st.st_gid)) {
-	cerr << "WARNING: will not setuid/gid: " << match_path
-	     << " owned by " << st.st_uid << ":" << st.st_gid
-	     << " and not requested " << uid << ":" << gid
-	     << std::endl;
-	uid = 0;
-	gid = 0;
-	uid_string.erase();
-	gid_string.erase();
+          (gid && gid != st.st_gid)) {
+        cerr << "WARNING: will not setuid/gid: " << match_path
+             << " owned by " << st.st_uid << ":" << st.st_gid
+             << " and not requested " << uid << ":" << gid
+             << std::endl;
+        uid = 0;
+        gid = 0;
+        uid_string.erase();
+        gid_string.erase();
       } else {
-	priv_ss << "setuser_match_path "
-		<< match_path << " owned by "
-		<< st.st_uid << ":" << st.st_gid << ". ";
+        priv_ss << "setuser_match_path "
+                << match_path << " owned by "
+                << st.st_uid << ":" << st.st_gid << ". ";
       }
     }
     g_ceph_context->set_uid_gid(uid, gid);
     g_ceph_context->set_uid_gid_strings(uid_string, gid_string);
     if ((flags & CINIT_FLAG_DEFER_DROP_PRIVILEGES) == 0) {
       if (setgid(gid) != 0) {
-	cerr << "unable to setgid " << gid << ": " << cpp_strerror(errno)
-	     << std::endl;
-	exit(1);
+        cerr << "unable to setgid " << gid << ": " << cpp_strerror(errno)
+             << std::endl;
+        exit(1);
       }
 #if defined(HAVE_SYS_PRCTL_H)
       if (g_conf().get_val<bool>("set_keepcaps")) {
-	if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
-	  cerr << "warning: unable to set keepcaps flag: " << cpp_strerror(errno) << std::endl;
-	}
+        if (prctl(PR_SET_KEEPCAPS, 1) == -1) {
+          cerr << "warning: unable to set keepcaps flag: " << cpp_strerror(errno) << std::endl;
+        }
       }
 #endif
       if (setuid(uid) != 0) {
-	cerr << "unable to setuid " << uid << ": " << cpp_strerror(errno)
-	     << std::endl;
-	exit(1);
+        cerr << "unable to setuid " << uid << ": " << cpp_strerror(errno)
+             << std::endl;
+        exit(1);
       }
       if (setenv("HOME", home_directory.c_str(), 1) != 0) {
-	cerr << "warning: unable to set HOME to " << home_directory << ": "
+        cerr << "warning: unable to set HOME to " << home_directory << ": "
              << cpp_strerror(errno) << std::endl;
       }
       priv_ss << "set uid:gid to " << uid << ":" << gid << " (" << uid_string << ":" << gid_string << ")";
@@ -376,7 +380,7 @@ global_init(const std::map<std::string,std::string> *defaults,
       cp.stop();
       g_ceph_context->_log->flush();
       cerr << "failed to fetch mon config (--no-mon-config to skip)"
-	   << std::endl;
+           << std::endl;
       _exit(1);
     }
     cp.stop();
@@ -417,10 +421,10 @@ global_init(const std::map<std::string,std::string> *defaults,
     // Admin socket files are chown()'d during the common init path _after_
     // the service thread has been started. This is sadly a bit of a hack :(
     chown_path(g_conf()->run_dir,
-	       g_ceph_context->get_set_uid(),
-	       g_ceph_context->get_set_gid(),
-	       g_ceph_context->get_set_uid_string(),
-	       g_ceph_context->get_set_gid_string());
+               g_ceph_context->get_set_uid(),
+               g_ceph_context->get_set_gid(),
+               g_ceph_context->get_set_uid_string(),
+               g_ceph_context->get_set_gid_string());
     g_ceph_context->_log->chown_log_file(
       g_ceph_context->get_set_uid(),
       g_ceph_context->get_set_gid());
@@ -465,9 +469,9 @@ int global_init_prefork(CephContext *cct)
       exit(1);
 
     if ((cct->get_init_flags() & CINIT_FLAG_DEFER_DROP_PRIVILEGES) &&
-	(cct->get_set_uid() || cct->get_set_gid())) {
+        (cct->get_set_uid() || cct->get_set_gid())) {
       chown_path(conf->pid_file, cct->get_set_uid(), cct->get_set_gid(),
-		 cct->get_set_uid_string(), cct->get_set_gid_string());
+                 cct->get_set_uid_string(), cct->get_set_gid_string());
     }
 
     return -1;
@@ -490,7 +494,7 @@ void global_init_daemonize(CephContext *cct)
   if (ret) {
     ret = errno;
     derr << "global_init_daemonize: BUG: daemon error: "
-	 << cpp_strerror(ret) << dendl;
+         << cpp_strerror(ret) << dendl;
     exit(1);
   }
  
@@ -515,7 +519,7 @@ int reopen_as_null(CephContext *cct, int fd)
   if (newfd < 0) {
     int err = errno;
     lderr(cct) << __func__ << " failed to open /dev/null: " << cpp_strerror(err)
-	       << dendl;
+               << dendl;
     return -1;
   }
   // atomically dup newfd to target fd.  target fd is implicitly closed if
@@ -524,7 +528,7 @@ int reopen_as_null(CephContext *cct, int fd)
   if (r < 0) {
     int err = errno;
     lderr(cct) << __func__ << " failed to dup2 " << fd << ": "
-	       << cpp_strerror(err) << dendl;
+               << cpp_strerror(err) << dendl;
     return -1;
   }
   // close newfd (we cloned it to target fd)
@@ -551,7 +555,7 @@ void global_init_postfork_start(CephContext *cct)
   if ((cct->get_init_flags() & CINIT_FLAG_DEFER_DROP_PRIVILEGES) &&
       (cct->get_set_uid() || cct->get_set_gid())) {
     chown_path(conf->pid_file, cct->get_set_uid(), cct->get_set_gid(),
-	       cct->get_set_uid_string(), cct->get_set_gid_string());
+               cct->get_set_uid_string(), cct->get_set_gid_string());
   }
 }
 
@@ -565,7 +569,7 @@ void global_init_postfork_finish(CephContext *cct)
     int ret = global_init_shutdown_stderr(cct);
     if (ret) {
       derr << "global_init_daemonize: global_init_shutdown_stderr failed with "
-	   << "error code " << ret << dendl;
+           << "error code " << ret << dendl;
       exit(1);
     }
   }
@@ -584,7 +588,7 @@ void global_init_chdir(const CephContext *cct)
   if (::chdir(conf->chdir.c_str())) {
     int err = errno;
     derr << "global_init_chdir: failed to chdir to directory: '"
-	 << conf->chdir << "': " << cpp_strerror(err) << dendl;
+         << conf->chdir << "': " << cpp_strerror(err) << dendl;
   }
 }
 
@@ -604,27 +608,27 @@ int global_init_preload_erasure_code(const CephContext *cct)
   std::list<string> plugins_list;
   get_str_list(plugins, plugins_list);
   for (auto i = plugins_list.begin(); i != plugins_list.end(); ++i) {
-	string plugin_name = *i;
-	string replacement = "";
+        string plugin_name = *i;
+        string replacement = "";
 
-	if (plugin_name == "jerasure_generic" || 
-	    plugin_name == "jerasure_sse3" ||
-	    plugin_name == "jerasure_sse4" ||
-	    plugin_name == "jerasure_neon") {
-	  replacement = "jerasure";
-	}
-	else if (plugin_name == "shec_generic" ||
-		 plugin_name == "shec_sse3" ||
-		 plugin_name == "shec_sse4" ||
-		 plugin_name == "shec_neon") {
-	  replacement = "shec";
-	}
+        if (plugin_name == "jerasure_generic" || 
+            plugin_name == "jerasure_sse3" ||
+            plugin_name == "jerasure_sse4" ||
+            plugin_name == "jerasure_neon") {
+          replacement = "jerasure";
+        }
+        else if (plugin_name == "shec_generic" ||
+                 plugin_name == "shec_sse3" ||
+                 plugin_name == "shec_sse4" ||
+                 plugin_name == "shec_neon") {
+          replacement = "shec";
+        }
 
-	if (replacement != "") {
-	  dout(0) << "WARNING: osd_erasure_code_plugins contains plugin "
-		  << plugin_name << " that is now deprecated. Please modify the value "
-		  << "for osd_erasure_code_plugins to use "  << replacement << " instead." << dendl;
-	}
+        if (replacement != "") {
+          dout(0) << "WARNING: osd_erasure_code_plugins contains plugin "
+                  << plugin_name << " that is now deprecated. Please modify the value "
+                  << "for osd_erasure_code_plugins to use "  << replacement << " instead." << dendl;
+        }
   }
 
   std::stringstream ss;

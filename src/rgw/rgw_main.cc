@@ -102,13 +102,16 @@ int main(int argc, char *argv[])
   // privileged ports
   flags |= CINIT_FLAG_DEFER_DROP_PRIVILEGES;
 
+  // 全局初始化，其中会分配ceph上下文类`CephContext`并初始化、并设置实例指针到 g_ceph_context 全局变量
   auto cct = rgw_global_init(&defaults, args, CEPH_ENTITY_TYPE_CLIENT,
-			     CODE_ENVIRONMENT_DAEMON, flags);
+                             CODE_ENVIRONMENT_DAEMON, flags);
 
   DoutPrefix dp(cct.get(), dout_subsys, "rgw main: ");
+  // rgw的主服务类
   rgw::AppMain main(&dp);
 
   main.init_frontends1(false /* nfs */);
+  // 根据配置绑定numa亲和性
   main.init_numa();
 
   if (g_conf()->daemonize) {
