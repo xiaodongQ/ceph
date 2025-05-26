@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
   // rgw的主服务类
   rgw::AppMain main(&dp);
 
+  // RGW 的前端（Frontend）负责处理客户端的请求：监听网络端口、处理HTTP/HTTPS请求、路由请求到后端的 RADOS 存储集群
   main.init_frontends1(false /* nfs */);
   // 根据配置绑定numa亲和性
   main.init_numa();
@@ -125,6 +126,7 @@ int main(int argc, char *argv[])
   mutex.unlock();
 
   common_init_finish(g_ceph_context);
+  // 初始化异步信号的处理器（其中是一个线程，利用poll轮询检测32个信号注册的读事件）
   init_async_signal_handler();
 
   /* XXXX check locations thru sighandler_alrm */
@@ -142,6 +144,7 @@ int main(int argc, char *argv[])
   sighandler_alrm = signal(SIGALRM, godown_alarm);
 
   main.init_perfcounters();
+  // 初始化DNS、curl、http客户端和kmip秘钥管理
   main.init_http_clients();
 
   r = main.init_storage();
@@ -166,6 +169,7 @@ int main(int argc, char *argv[])
   main.init_opslog();
   main.init_tracepoints();
   main.init_lua();
+  // 里面包含了RGW前端具体初始化操作
   r = main.init_frontends2(nullptr /* RGWLib */);
   if (r != 0) {
     derr << "ERROR:  initialize frontend fail, r = " << r << dendl;

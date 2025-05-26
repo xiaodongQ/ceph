@@ -93,6 +93,7 @@ rgw::AppMain::AppMain(const DoutPrefixProvider* dpp) : dpp(dpp)
 }
 rgw::AppMain::~AppMain() = default;
 
+// radosgw前端初始化
 void rgw::AppMain::init_frontends1(bool nfs) 
 {
   // 前端是否是 nfs
@@ -111,6 +112,7 @@ void rgw::AppMain::init_frontends1(bool nfs)
     }
   } else {
     if (frontends.empty()) {
+      // Beast：基于 HTTP/2 的高性能前端（默认使用）
       frontends.push_back("beast");
     }
   }
@@ -135,6 +137,7 @@ void rgw::AppMain::init_frontends1(bool nfs)
       }
     } /* fe !beast */
 
+    // RGW前端配置
     RGWFrontendConfig *config = new RGWFrontendConfig(f);
     int r = config->init();
     if (r < 0) {
