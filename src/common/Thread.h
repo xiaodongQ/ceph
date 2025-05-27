@@ -36,6 +36,7 @@ class Thread {
   pthread_t thread_id;
   pid_t pid;
   int cpuid;
+  // thread_local变量
   static inline thread_local std::string thread_name;
 
   void *entry_wrapper();

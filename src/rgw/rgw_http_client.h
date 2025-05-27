@@ -291,6 +291,7 @@ class RGWHTTPManager {
     set_state(rgw_http_req_data *_req, int _bitmask) : req(_req), bitmask(_bitmask) {}
   };
   CephContext *cct;
+  // 完成的io请求管理类
   RGWCompletionManager *completion_mgr;
   void *multi_handle;
   bool is_started = false;
@@ -298,9 +299,11 @@ class RGWHTTPManager {
   std::atomic<unsigned> is_stopped { 0 };
 
   ceph::shared_mutex reqs_lock = ceph::make_shared_mutex("RGWHTTPManager::reqs_lock");
+  // rgw请求数据
   std::map<uint64_t, rgw_http_req_data *> reqs;
   std::list<rgw_http_req_data *> unregistered_reqs;
   std::list<set_state> reqs_change_state;
+  // 已完成的rgw请求
   std::map<uint64_t, rgw_http_req_data *> complete_reqs;
   int64_t num_reqs = 0;
   int64_t max_threaded_req = 0;
@@ -319,6 +322,7 @@ class RGWHTTPManager {
 
   void manage_pending_requests();
 
+  // 线程类
   class ReqsThread : public Thread {
     RGWHTTPManager *manager;
 
@@ -327,6 +331,7 @@ class RGWHTTPManager {
     void *entry() override;
   };
 
+  // start()中会创建线程，并由该指针指向线程
   ReqsThread *reqs_thread = nullptr;
 
   void *reqs_thread_entry();

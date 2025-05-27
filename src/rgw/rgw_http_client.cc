@@ -1060,6 +1060,7 @@ int RGWHTTPManager::start()
   }
 
   is_started = true;
+  // 创建线程
   reqs_thread = new ReqsThread(this);
   reqs_thread->create("http_manager");
   return 0;

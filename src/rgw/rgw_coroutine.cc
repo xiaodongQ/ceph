@@ -720,6 +720,7 @@ int RGWCoroutinesManager::run(const DoutPrefixProvider *dpp, list<RGWCoroutinesS
      */
     while (blocked_count - interval_wait_count >= ops_window) {
       lock.unlock();
+      // 获取一个完成的异步io
       ret = completion_mgr->get_next(&io);
       lock.lock();
       if (ret < 0) {

@@ -49,6 +49,7 @@ class RGWCompletionManager : public RefCountedObject {
   std::set<NotifierRef> cns;
 
   ceph::mutex lock = ceph::make_mutex("RGWCompletionManager::lock");
+  // 自己封装了pthread_cond_t，为什么很多项目都不用C++标准库的 std::condition_variable ？
   ceph::condition_variable cond;
 
   SafeTimer timer;
@@ -61,6 +62,7 @@ class RGWCompletionManager : public RefCountedObject {
 
 protected:
   void _wakeup(void *opaque);
+  // 通知异步io（cn）已完成
   void _complete(RGWAioCompletionNotifier *cn, const rgw_io_id& io_id, void *user_info);
 public:
   explicit RGWCompletionManager(CephContext *_cct);

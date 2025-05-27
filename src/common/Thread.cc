@@ -110,11 +110,13 @@ int Thread::kill(int signal)
     return -EINVAL;
 }
 
+// 设置线程栈空间，并创建线程
 int Thread::try_create(size_t stacksize)
 {
   pthread_attr_t *thread_attr = NULL;
   pthread_attr_t thread_attr_loc;
   
+  // 线程栈空间，pagesize的整数倍
   stacksize &= CEPH_PAGE_MASK;  // must be multiple of page
   if (stacksize) {
     thread_attr = &thread_attr_loc;
