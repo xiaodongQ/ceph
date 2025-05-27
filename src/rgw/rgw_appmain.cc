@@ -424,6 +424,7 @@ int rgw::AppMain::init_frontends2(RGWLib* rgwlib)
 
   service_map_meta["pid"] = stringify(getpid());
 
+  // 可能支持多个前端，对每个前端配置进行初始化
   std::map<std::string, std::unique_ptr<RGWFrontendConfig> > fe_def_map;
   for (auto& f : frontends_def) {
     RGWFrontendConfig *config = new RGWFrontendConfig(f);
@@ -471,6 +472,7 @@ int rgw::AppMain::init_frontends2(RGWLib* rgwlib)
 
     RGWFrontend* fe = nullptr;
 
+    // 针对不同前端对应的框架，分别进行不同的实例化
     if (framework == "loadgen") {
       fe = new RGWLoadGenFrontend(env, config);
     }
@@ -504,11 +506,13 @@ int rgw::AppMain::init_frontends2(RGWLib* rgwlib)
     }
 
     dout(0) << "starting handler: " << fiter->first << dendl;
+    // 前端处理类初始化
     int r = fe->init();
     if (r < 0) {
       derr << "ERROR: failed initializing frontend" << dendl;
       return -r;
     }
+    // 前端处理类启动
     r = fe->run();
     if (r < 0) {
       derr << "ERROR: failed run" << dendl;

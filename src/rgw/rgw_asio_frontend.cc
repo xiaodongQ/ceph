@@ -488,8 +488,8 @@ class AsioFrontend {
 
  public:
   AsioFrontend(RGWProcessEnv& env, RGWFrontendConfig* conf,
-	       dmc::SchedulerCtx& sched_ctx,
-	       boost::asio::io_context& context)
+               dmc::SchedulerCtx& sched_ctx,
+               boost::asio::io_context& context)
     : env(env), conf(conf), context(context),
       pause_mutex(context.get_executor()),
       backoff(context)
@@ -653,6 +653,7 @@ int AsioFrontend::init()
 #endif
 
   // parse endpoints
+  // 可能监听多个端口
   auto ports = config.equal_range("port");
   for (auto i = ports.first; i != ports.second; ++i) {
     auto port = parse_port(i->second.c_str(), ec);
@@ -667,6 +668,7 @@ int AsioFrontend::init()
     listeners.back().endpoint = tcp::endpoint(tcp::v6(), port);
   }
 
+  // 可能多个endpoints
   auto endpoints = config.equal_range("endpoint");
   for (auto i = endpoints.first; i != endpoints.second; ++i) {
     auto endpoint = parse_endpoint(i->second, 80, ec);
@@ -678,6 +680,7 @@ int AsioFrontend::init()
     listeners.back().endpoint = endpoint;
   }
   // parse tcp nodelay
+  // 是否禁用nagle
   auto nodelay = config.find("tcp_nodelay");
   if (nodelay != config.end()) {
     for (auto& l : listeners) {
@@ -688,13 +691,14 @@ int AsioFrontend::init()
 
   bool socket_bound = false;
   // start listeners
+  // 开始监听
   for (auto& l : listeners) {
     l.acceptor.open(l.endpoint.protocol(), ec);
     if (ec) {
       if (ec == boost::asio::error::address_family_not_supported) {
-	ldout(ctx(), 0) << "WARNING: cannot open socket for endpoint=" << l.endpoint
-			<< ", " << ec.message() << dendl;
-	continue;
+        ldout(ctx(), 0) << "WARNING: cannot open socket for endpoint=" << l.endpoint
+                        << ", " << ec.message() << dendl;
+        continue;
       }
 
       lderr(ctx()) << "failed to open socket: " << ec.message() << dendl;
@@ -705,8 +709,8 @@ int AsioFrontend::init()
       l.acceptor.set_option(boost::asio::ip::v6_only(true), ec);
       if (ec) {
         lderr(ctx()) << "failed to set v6_only socket option: "
-		     << ec.message() << dendl;
-	return -ec.value();
+                     << ec.message() << dendl;
+        return -ec.value();
       }
     }
 
@@ -731,6 +735,7 @@ int AsioFrontend::init()
     l.acceptor.listen(max_connection_backlog);
 
     // spawn a cancellable coroutine to the run the accept loop
+    // 创建协程，用于处理循环accept
     boost::asio::spawn(context,
       [this, &l] (boost::asio::yield_context yield) mutable {
         accept(l, yield);
@@ -797,17 +802,17 @@ string ExpandMetaVar::process_str(const string& in)
       // ...${foo_bar}...
       endpos = in.find_first_not_of(valid_chars, pos + 2);
       if (endpos != std::string::npos &&
-	  in[endpos] == '}') {
-	var = in.substr(pos + 2, endpos - pos - 2);
-	endpos++;
+          in[endpos] == '}') {
+        var = in.substr(pos + 2, endpos - pos - 2);
+        endpos++;
       }
     } else {
       // ...$foo...
       endpos = in.find_first_not_of(valid_chars, pos + 1);
       if (endpos != std::string::npos)
-	var = in.substr(pos + 1, endpos - pos - 1);
+        var = in.substr(pos + 1, endpos - pos - 1);
       else
-	var = in.substr(pos + 1);
+        var = in.substr(pos + 1);
     }
     string var_source = in.substr(pos, endpos - pos);
     last_pos = endpos;
@@ -1219,8 +1224,8 @@ class RGWAsioFrontend::Impl : public AsioFrontend {
 
 RGWAsioFrontend::RGWAsioFrontend(RGWProcessEnv& env,
                                  RGWFrontendConfig* conf,
-				 rgw::dmclock::SchedulerCtx& sched_ctx,
-				 boost::asio::io_context& context)
+                                 rgw::dmclock::SchedulerCtx& sched_ctx,
+                                 boost::asio::io_context& context)
   : impl(new Impl(env, conf, sched_ctx, context))
 {
 }
